@@ -19,7 +19,7 @@
 
 评审人（本仓可直接 assign）：`xwms`、`valacoynocecio475-prog`。
 
-线上预览：<https://gxmzu-aitecc.github.io/calculator-js-lite/>（合并进 `develop` 后自动重建）
+线上预览：<https://gxmzu-aitecc.github.io/calculator-interview/>（合并进 `develop` 后自动重建）
 
 ## 本仓补充要求（guidelines 没写的）
 
