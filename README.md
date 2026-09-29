@@ -17,7 +17,7 @@
 | 5 | 在 **Reviewers 里 assign 至少 2 名技术部成员**（见下表），别只在正文打 @ | C5-1 |
 | 6 | 至少 1 人批准，由技术部部长合并；合并后自动上线到 Pages，可点开验收 | C5 / E1 |
 
-评审人（本仓可直接 assign）：`xwms`、`valacoynocecio475-prog`。
+评审人：组织管理员 `isryanyhliu`、`xwms`，以及被指派为 Reviewer 的成员（`reviewers` team 里的人）——在 Reviewers 里搜得到谁就 assign 谁。
 
 线上预览：<https://gxmzu-aitecc.github.io/calculator-interview/>（合并进 `develop` 后自动重建）
 
