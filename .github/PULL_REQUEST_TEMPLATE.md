@@ -21,4 +21,4 @@
 - [ ] 标题 `feat:` / `fix:` 开头（T6）
 - [ ] 自己跑过，控制台无新增报错
 
-<!-- Reviewers 里 assign 至少 2 人（T2）：管理员与 reviewers team 里的人 -->
+<!-- 评审不用你操作：本仓 CODEOWNERS 已把评审自动派给 reviewers team，第二名认领的 Reviewer 批准并合并（T2） -->
