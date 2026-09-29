@@ -1,15 +1,19 @@
 /**
- * 程序入口：装配各层（对应 Python 桌面版 main.py）。
- *
- * Python 版的装配顺序：model -> view -> controller -> mainloop
- * 本版的装配顺序：初始化显示 -> 渲染键盘 -> （事件绑定由后续 PR 接通）
+ * 简易计算器：只用原生 JS，全部逻辑写在本文件里。
+ * 不引框架、不拆文件、不装依赖。
  */
 
-// 1. 初始化显示区
-view.renderDisplay('0');
+// 页面骨架（种子已就绪，别改名）
+const displayMain = document.getElementById('display-main');
+const displaySub = document.getElementById('display-sub');
+const keyboard = document.getElementById('keyboard');
 
-// 2. 渲染键盘（当前为空容器，等按键 PR 长出来）
-view.renderKeyboard();
-
-// TODO(feat): 按键渲染完成后，在这里把按键点击事件接到
-//             controller.handleButtonClick（见 Issue 任务池）
+/**
+ * 加法：把两个数相加。
+ * @param {number} a 加数
+ * @param {number} b 被加数
+ * @returns {number} 两数之和
+ */
+function add(a, b) {
+  // TODO: 整个计算器现在只会这一件事，而且还没实现——等着你的 PR
+}
