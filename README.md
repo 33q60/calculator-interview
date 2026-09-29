@@ -18,6 +18,6 @@
 | **骨架只锁两样** | 显示区的 DOM 结构、`js/main.js` 里已有的函数签名——不动。样式随你改（`css/style.css` 可新增可重写，黑白模式、换肤、动画都行），显示区之外要加按钮也可以 |
 | **验收要图** | PR 里附一张浏览器实际效果截图，没图不算做完 |
 | **公开仓，内部资产** | 本仓对外可见，但题目、代码、Issue 与 PR 讨论都按社团内部资产对待（**P0**） |
-| **评审不用你操心** | 外部账号没有 assign 权限：提完 PR 等就行。本仓用 CODEOWNERS 把评审自动派给 `reviewers` team，谁认领谁评审，第二名认领的 Reviewer 批准并合并 |
+| **评审不用你操心** | 外部账号没有 assign 权限：提完 PR 等就行。本仓用 CODEOWNERS 把评审自动派给 `reviewers` team，谁认领谁评审，第二名认领的 Reviewer 批准并合并（T6） |
 
 线上预览：<https://gxmzu-aitecc.github.io/calculator-interview/>（合并后自动更新，点开就是你的验收）
