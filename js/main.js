@@ -114,6 +114,19 @@ function inputDigit(digit) {
   show();
 }
 
+/** 小数点键：一个数里最多一个小数点；新起一个数时从 0. 开始。 */
+function inputDecimal() {
+  if (isError()) {
+    text = INITIAL;
+  }
+  if (waiting) {
+    text = `${INITIAL}.`;
+    waiting = false;
+  } else if (!text.includes('.')) {
+    text = text === INITIAL ? `${INITIAL}.` : `${text}.`;
+  }
+  show();
+}
 /** 运算符键：冻结左操作数；已有待执行的运算时先算出中间结果。 */
 function inputOperator(op) {
   if (isError()) {
@@ -178,6 +191,7 @@ const LAYOUT = [
   ['4', 'digit'], ['5', 'digit'], ['6', 'digit'], ['÷', 'operator'],
   ['1', 'digit'], ['2', 'digit'], ['3', 'digit'], ['×', 'operator'],
   ['0', 'digit'], ['−', 'operator'], ['+', 'operator'], ['=', 'equals'],
+  ['.', 'decimal'],
 ];
 
 // 类别 → 样式类（沿用 seed 里预留好的四个配色类）
@@ -186,6 +200,7 @@ const KEY_CLASS = {
   operator: 'key--action',
   clear: 'key--danger',
   equals: 'key--success',
+  decimal: 'key--normal',
 };
 
 LAYOUT.forEach(([label, kind]) => {
@@ -198,6 +213,8 @@ LAYOUT.forEach(([label, kind]) => {
       inputDigit(label);
     } else if (kind === 'operator') {
       inputOperator(label);
+    } else if (kind === 'decimal') {
+      inputDecimal();
     } else if (kind === 'clear') {
       inputClear();
     } else {
