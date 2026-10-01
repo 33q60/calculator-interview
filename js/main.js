@@ -183,6 +183,21 @@ function inputBackspace() {
   show();
 }
 
+/** CE 键：清除当前输入，保留待执行的运算。 */
+function inputClearEntry() {
+  text = INITIAL;
+  waiting = false;
+
+  if (pendingOp === null) {
+    acc = null;
+    showSub('');
+  } else {
+    showSub(`${formatResult(acc)} ${pendingOp}`);
+  }
+
+  show();
+}
+
 /** C 键：全部清零。 */
 function inputClear() {
   text = INITIAL;
@@ -201,7 +216,7 @@ const LAYOUT = [
   ['4', 'digit'], ['5', 'digit'], ['6', 'digit'], ['÷', 'operator'],
   ['1', 'digit'], ['2', 'digit'], ['3', 'digit'], ['×', 'operator'],
   ['0', 'digit'], ['−', 'operator'], ['+', 'operator'], ['=', 'equals'],
-  ['.', 'decimal'], ['⌫', 'backspace'],
+  ['.', 'decimal'], ['⌫', 'backspace'], ['CE', 'clearEntry'],
 ];
 
 // 类别 → 样式类（沿用 seed 里预留好的四个配色类）
@@ -212,6 +227,7 @@ const KEY_CLASS = {
   equals: 'key--success',
   decimal: 'key--normal',
   backspace: 'key--action',
+  clearEntry: 'key--danger',
 };
 
 LAYOUT.forEach(([label, kind]) => {
@@ -230,6 +246,8 @@ LAYOUT.forEach(([label, kind]) => {
       inputClear();
     } else if (kind === 'backspace') {
       inputBackspace();
+    } else if (kind === 'clearEntry') {
+      inputClearEntry();
     } else {
       inputEquals();
     }
