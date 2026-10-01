@@ -173,6 +173,16 @@ function inputEquals() {
   show();
 }
 
+/** 退格键：只编辑正在输入的数字，不改动待输入状态、计算结果或错误。 */
+function inputBackspace() {
+  if (waiting || isError()) {
+    return;
+  }
+
+  text = text.slice(0, -1) || INITIAL;
+  show();
+}
+
 /** C 键：全部清零。 */
 function inputClear() {
   text = INITIAL;
@@ -182,7 +192,7 @@ function inputClear() {
 }
 
 // ---------------------------------------------------------------
-// 键盘渲染：4 列 × 4 行，共 16 键
+// 键盘渲染：4 列网格，末行放小数点与退格键
 // ---------------------------------------------------------------
 
 // 每项：显示文字 + 按键类别（决定配色 class）
@@ -191,7 +201,7 @@ const LAYOUT = [
   ['4', 'digit'], ['5', 'digit'], ['6', 'digit'], ['÷', 'operator'],
   ['1', 'digit'], ['2', 'digit'], ['3', 'digit'], ['×', 'operator'],
   ['0', 'digit'], ['−', 'operator'], ['+', 'operator'], ['=', 'equals'],
-  ['.', 'decimal'],
+  ['.', 'decimal'], ['⌫', 'backspace'],
 ];
 
 // 类别 → 样式类（沿用 seed 里预留好的四个配色类）
@@ -201,6 +211,7 @@ const KEY_CLASS = {
   clear: 'key--danger',
   equals: 'key--success',
   decimal: 'key--normal',
+  backspace: 'key--action',
 };
 
 LAYOUT.forEach(([label, kind]) => {
@@ -217,6 +228,8 @@ LAYOUT.forEach(([label, kind]) => {
       inputDecimal();
     } else if (kind === 'clear') {
       inputClear();
+    } else if (kind === 'backspace') {
+      inputBackspace();
     } else {
       inputEquals();
     }
