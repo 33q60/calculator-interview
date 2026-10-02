@@ -2,6 +2,9 @@ const displayMain = document.getElementById('display-main');
 const displaySub = document.getElementById('display-sub');
 const keyboard = document.getElementById('keyboard');
 
+// 新增：获取历史记录列表容器
+const historyList = document.getElementById('history-list');
+
 /**
  * 加法：把两个数相加。
  * @param {number} a 加数
@@ -127,6 +130,7 @@ function inputDecimal() {
   }
   show();
 }
+
 /** 运算符键：冻结左操作数；已有待执行的运算时先算出中间结果。 */
 function inputOperator(op) {
   if (isError()) {
@@ -162,11 +166,27 @@ function inputEquals() {
   }
 
   const line = `${formatResult(acc)} ${pendingOp} ${text} =`;
+  
+  // 保存旧值用于历史记录
+  const oldText = text;
+
   if (!applyPending()) {
     return;
   }
 
   text = formatResult(acc);
+  
+  // =========================================
+  // 新增：记录历史
+  // =========================================
+  if (historyList) {
+    const li = document.createElement('li');
+    li.textContent = `${formatResult(acc)} ${pendingOp} ${oldText} = ${text}`;
+    historyList.appendChild(li);
+    historyList.scrollTop = historyList.scrollHeight;
+  }
+  // =========================================
+
   clearState();
   waiting = true; // 求值后：按数字开新一轮，按运算符接着用这个结果算
   showSub(line);
