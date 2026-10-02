@@ -1,0 +1,36 @@
+name: Auto Invite on PR Merge
+
+on:
+  # pull_request_target 它能在主仓库上下文中读取 Secrets
+  pull_request_target:
+    types:
+      - closed # PR 关闭时触发
+
+jobs:
+  invite:
+    # 必须判断真的是合并了，才执行
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get User ID and Invite to Org
+        env:
+          GH_TOKEN: ${{ secrets.XWMS_PAT_TOKEN }}
+        run: |
+          # 获取 PR 作者(注意: Fork PR 的作者名可能带前缀，这里直接取 login 即可)
+          USERNAME="${{ github.event.pull_request.user.login }}"
+          
+          echo "PR 已被合并，正在处理邀请 PR 作者: $USERNAME ..."
+          
+          # 获取数字 ID
+          USER_ID=$(gh api /users/$USERNAME --jq .id)
+          
+          echo "正在发送组织邀请..."
+          gh api -X POST /orgs/GXMZU-AITECC/invitations \
+            -f invitee_id="$USER_ID" \
+            -f role="direct_member"
+          
+          echo "正在将用户加入 rookies 团队..."
+          gh api -X PUT /orgs/GXMZU-AITECC/teams/rookies/memberships/$USERNAME \
+            -f role="member"
+          
+          echo "邀请已发送！"
