@@ -5,6 +5,9 @@ const keyboard = document.getElementById('keyboard');
 // 获取历史记录列表容器
 const historyList = document.getElementById('history-list');
 
+// 获取历史记录面板（只用来挂「清空」按钮，DOM 结构不改）
+const historyPanel = document.getElementById('history-panel');
+
 /**
  * 加法：把两个数相加。
  * @param {number} a 加数
@@ -141,20 +144,15 @@ function inputEquals() {
   }
 
   const line = `${formatResult(acc)} ${pendingOp} ${text} =`;
-  const oldText = text;
 
   if (!applyPending()) {
     return;
   }
 
   text = formatResult(acc);
-  
-  if (historyList) {
-    const li = document.createElement('li');
-    li.textContent = `${formatResult(acc)} ${pendingOp} ${oldText} = ${text}`;
-    historyList.appendChild(li);
-    historyList.scrollTop = historyList.scrollHeight;
-  }
+
+  // line 在 applyPending 之前就算好了，左侧操作数不会被结果覆盖（原来这里把 acc 用成了结果）
+  recordHistory(line, text);
 
   clearState();
   waiting = true;
@@ -299,5 +297,113 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+// =========================================
+// 新增：历史记录增强（持久化 / 点击回填 / 清空）
+// 复用已合并的 #history-list 面板，不新增面板、不改显示区
+// =========================================
+const HISTORY_KEY = 'calculator-history'; // localStorage 里的存储键
+const HISTORY_MAX = 20; // 最多保留条数，超出丢弃最旧的
+
+// 每条 { line: '12 + 7 =', result: '19' }，新的排最前
+let history = [];
+
+/** 只认结构完整的记录：脏数据（null / 缺字段）直接丢掉，免得渲染出 undefined。 */
+function isHistoryItem(item) {
+  return Boolean(item) && typeof item.line === 'string' && typeof item.result === 'string';
+}
+
+/** 启动时读取历史；读不出来（无痕模式 / 数据损坏）就当没有。 */
+function loadHistory() {
+  try {
+    const arr = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+    history = Array.isArray(arr) ? arr.filter(isHistoryItem) : [];
+  } catch (e) {
+    history = [];
+  }
+}
+
+/** 写回 localStorage；写不进去（无痕模式）就静默跳过，不影响计算。 */
+function saveHistory() {
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+  } catch (e) {
+    // 静默降级：本次不持久化而已
+  }
+}
+
+/** 求值成功后记一条并刷新面板。 */
+function recordHistory(line, result) {
+  history.unshift({ line, result });
+  if (history.length > HISTORY_MAX) {
+    history.length = HISTORY_MAX;
+  }
+  saveHistory();
+  renderHistory();
+}
+
+/** 点某条记录：把该次结果回填到主屏，作为新算式的起点。 */
+function refillFromHistory(item) {
+  text = item.result;
+  clearState();
+  waiting = true; // 与求值后一致：接着按数字另起一轮，按运算符则用这个结果继续算
+  showSub('');
+  show();
+}
+
+/** 「清空」按钮：清掉全部记录，含已持久化的。 */
+function clearHistory() {
+  history = [];
+  saveHistory();
+  renderHistory();
+}
+
+/** 把 history 刷到面板上。 */
+function renderHistory() {
+  if (!historyList) {
+    return; // 页面没有历史面板时整个功能自动失效，不影响计算
+  }
+
+  historyList.innerHTML = '';
+
+  if (history.length === 0) {
+    const empty = document.createElement('li');
+    empty.className = 'history-empty';
+    empty.textContent = '暂无记录';
+    historyList.appendChild(empty);
+    return;
+  }
+
+  history.forEach((item) => {
+    const li = document.createElement('li');
+    li.className = 'history-item';
+    li.textContent = `${item.line} ${item.result}`;
+    li.title = '点击把结果填回主屏';
+    li.addEventListener('click', () => refillFromHistory(item));
+    historyList.appendChild(li);
+  });
+
+  historyList.scrollTop = 0; // 最新的在最上面，回到顶部
+}
+
+// 「清空」按钮挂在标题右侧：标题与按钮包一层，index.html 不动
+if (historyPanel && historyList) {
+  const title = historyPanel.querySelector('h3');
+  const head = document.createElement('div');
+  head.className = 'history-panel__head';
+  historyPanel.insertBefore(head, historyPanel.firstChild);
+  if (title) {
+    head.appendChild(title);
+  }
+
+  const clearButton = document.createElement('button');
+  clearButton.type = 'button';
+  clearButton.className = 'history-clear';
+  clearButton.textContent = '清空';
+  clearButton.addEventListener('click', clearHistory);
+  head.appendChild(clearButton);
+}
+
 // 初始化
+loadHistory();
+renderHistory();
 show();
