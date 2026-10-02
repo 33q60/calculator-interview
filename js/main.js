@@ -198,6 +198,25 @@ function inputClearEntry() {
   show();
 }
 
+/** 平方根键：对当前显示的数开平方；负数进入错误态。 */
+function inputSqrt() {
+  if (isError()) {
+    return;
+  }
+
+  const value = Number(text);
+  if (value < 0) {
+    text = ERROR_TEXT;
+    clearState();
+    showSub('');
+    show();
+    return;
+  }
+
+  text = formatResult(Math.sqrt(value));
+  show();
+}
+
 /** C 键：全部清零。 */
 function inputClear() {
   text = INITIAL;
@@ -216,7 +235,7 @@ const LAYOUT = [
   ['4', 'digit'], ['5', 'digit'], ['6', 'digit'], ['÷', 'operator'],
   ['1', 'digit'], ['2', 'digit'], ['3', 'digit'], ['×', 'operator'],
   ['0', 'digit'], ['−', 'operator'], ['+', 'operator'], ['=', 'equals'],
-  ['.', 'decimal'], ['⌫', 'backspace'], ['CE', 'clearEntry'],
+  ['.', 'decimal'], ['⌫', 'backspace'], ['CE', 'clearEntry'], ['√', 'sqrt'],
 ];
 
 // 类别 → 样式类（沿用 seed 里预留好的四个配色类）
@@ -228,6 +247,7 @@ const KEY_CLASS = {
   decimal: 'key--normal',
   backspace: 'key--action',
   clearEntry: 'key--danger',
+  sqrt: 'key--action',
 };
 
 LAYOUT.forEach(([label, kind]) => {
@@ -248,6 +268,8 @@ LAYOUT.forEach(([label, kind]) => {
       inputBackspace();
     } else if (kind === 'clearEntry') {
       inputClearEntry();
+    } else if (kind === 'sqrt') {
+      inputSqrt();
     } else {
       inputEquals();
     }
