@@ -237,6 +237,27 @@ function inputSqrt() {
   show();
 }
 
+/** 平方键：对当前显示的数求平方。 */
+function inputSquare() {
+  if (isError()) {
+    return;
+  }
+
+  const value = Number(text);
+  const result = formatResult(value * value);
+
+  if (result === ERROR_TEXT) {
+    text = ERROR_TEXT;
+    clearState();
+    showSub('');
+    show();
+    return;
+  }
+
+  text = result;
+  show();
+}
+
 /** C 键：全部清零。 */
 function inputClear() {
   text = INITIAL;
@@ -256,6 +277,7 @@ const LAYOUT = [
   ['1', 'digit'], ['2', 'digit'], ['3', 'digit'], ['×', 'operator'],
   ['0', 'digit'], ['−', 'operator'], ['+', 'operator'], ['=', 'equals'],
   ['.', 'decimal'], ['⌫', 'backspace'], ['CE', 'clearEntry'], ['√', 'sqrt'],
+  ['x²', 'square'],
 ];
 
 // 类别 → 样式类（沿用 seed 里预留好的四个配色类）
@@ -268,6 +290,7 @@ const KEY_CLASS = {
   backspace: 'key--action',
   clearEntry: 'key--danger',
   sqrt: 'key--action',
+  square: 'key--action',
 };
 
 LAYOUT.forEach(([label, kind]) => {
@@ -290,6 +313,8 @@ LAYOUT.forEach(([label, kind]) => {
       inputClearEntry();
     } else if (kind === 'sqrt') {
       inputSqrt();
+    } else if (kind === 'square') {
+      inputSquare();
     } else {
       inputEquals();
     }
