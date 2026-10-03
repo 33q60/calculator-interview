@@ -201,6 +201,28 @@ function inputSqrt() {
   show();
 }
 
+/** 平方键：对当前显示的数求平方。 */
+function inputSquare() {
+  if (isError()) {
+    return;
+  }
+
+  const value = Number(text);
+  const result = formatResult(value * value);
+
+  if (result === ERROR_TEXT) {
+    text = ERROR_TEXT;
+    clearState();
+    showSub('');
+    show();
+    return;
+  }
+
+  text = result;
+  show();
+}
+
+/** C 键：全部清零。 */
 function inputClear() {
   text = INITIAL;
   clearState();
@@ -228,6 +250,8 @@ const LAYOUT = [
   ['1', 'digit'], ['2', 'digit'], ['3', 'digit'], ['×', 'operator'],
   ['0', 'digit'], ['−', 'operator'], ['+', 'operator'], ['=', 'equals'],
   ['.', 'decimal'], ['⌫', 'backspace'], ['CE', 'clearEntry'], ['√', 'sqrt'],
+  ['x²', 'square'],
+  ['(', 'lparen'], [')', 'rparen'], // #43 新增：末行整行放左右括号
   ['复制', 'copy'],
 ];
 
@@ -240,6 +264,9 @@ const KEY_CLASS = {
   backspace: 'key--action',
   clearEntry: 'key--danger',
   sqrt: 'key--action',
+  square: 'key--action',
+  lparen: 'key--action', // #43 新增
+  rparen: 'key--action',
   copy: 'key--action',
 };
 
@@ -263,6 +290,12 @@ LAYOUT.forEach(([label, kind]) => {
       inputClearEntry();
     } else if (kind === 'sqrt') {
       inputSqrt();
+    } else if (kind === 'square') {
+      inputSquare();
+    } else {
+      inputEquals();
+    }
+    handleKeyAction(kind, label); // 分发逻辑统一收口到 handleKeyAction（原 if/else 链原样搬移）
     } else if (kind === 'copy') {
       inputCopy();
     } else {
