@@ -222,6 +222,23 @@ function inputSquare() {
   show();
 }
 
+/** 倒数键：对当前显示的数求倒数。 */
+function inputReciprocal() {
+  if (isError()) {
+    return;
+  }
+
+  const value = Number(text);
+  text = formatResult(1 / value);
+
+  if (text === ERROR_TEXT) {
+    clearState();
+    showSub('');
+  }
+
+  show();
+}
+
 /** C 键：全部清零。 */
 function inputClear() {
   text = INITIAL;
@@ -251,6 +268,7 @@ const LAYOUT = [
   ['0', 'digit'], ['−', 'operator'], ['+', 'operator'], ['=', 'equals'],
   ['.', 'decimal'], ['⌫', 'backspace'], ['CE', 'clearEntry'], ['√', 'sqrt'],
   ['x²', 'square'],
+  ['1/x', 'reciprocal'],
   ['(', 'lparen'], [')', 'rparen'], // #43 新增：末行整行放左右括号
   ['复制', 'copy'],
 ];
@@ -265,6 +283,7 @@ const KEY_CLASS = {
   clearEntry: 'key--danger',
   sqrt: 'key--action',
   square: 'key--action',
+  reciprocal: 'key--action',
   lparen: 'key--action', // #43 新增
   rparen: 'key--action',
   copy: 'key--action',
@@ -292,10 +311,8 @@ LAYOUT.forEach(([label, kind]) => {
       inputSqrt();
     } else if (kind === 'square') {
       inputSquare();
-    } else {
-      inputEquals();
-    }
-    handleKeyAction(kind, label); // 分发逻辑统一收口到 handleKeyAction（原 if/else 链原样搬移）
+    } else if (kind === 'reciprocal') {
+      inputReciprocal();
     } else if (kind === 'copy') {
       inputCopy();
     } else {
