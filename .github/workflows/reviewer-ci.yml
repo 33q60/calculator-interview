@@ -1,0 +1,150 @@
+name: Reviewer CI (/ci)
+
+# 仅审核人在 PR 评论 /ci 时跑；不挂 pull_request，避免 fork 刷分钟数。
+# 注意：issue_comment 工作流只从仓库 default branch 加载。
+# 当前组织仓 default 是 main；合并到 develop 后还需进 default branch 才会生效。
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: reviewer-ci-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  authorize:
+    if: >
+      github.event.issue.pull_request &&
+      contains(github.event.comment.body, '/ci')
+    runs-on: ubuntu-latest
+    outputs:
+      allowed: ${{ steps.check.outputs.allowed }}
+      head_repo: ${{ steps.meta.outputs.head_repo }}
+      head_sha: ${{ steps.meta.outputs.head_sha }}
+    steps:
+      - name: 解析评论口令
+        id: cmd
+        env:
+          BODY: ${{ github.event.comment.body }}
+        run: |
+          set -euo pipefail
+          LINE=$(printf '%s' "$BODY" | tr -d '\r' | head -n 1 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+          if [ "$LINE" != "/ci" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "首行不是 /ci，忽略"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 校验评论者属于 reviewers
+        id: check
+        if: steps.cmd.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.XWMS_PAT_TOKEN }}
+          ACTOR: ${{ github.event.comment.user.login }}
+          FALLBACK: "isryanyhliu xwms MOLUOGH Return-leaf hongwei-2026"
+        run: |
+          set -euo pipefail
+          ALLOWED=false
+          if [ -n "${GH_TOKEN:-}" ]; then
+            STATE=$(gh api "/orgs/GXMZU-AITECC/teams/reviewers/memberships/${ACTOR}" --jq .state 2>/dev/null || true)
+            if [ "$STATE" = "active" ]; then
+              ALLOWED=true
+            fi
+          fi
+          if [ "$ALLOWED" != "true" ]; then
+            for u in $FALLBACK; do
+              if [ "$u" = "$ACTOR" ]; then
+                ALLOWED=true
+                break
+              fi
+            done
+          fi
+          echo "allowed=$ALLOWED" >> "$GITHUB_OUTPUT"
+          if [ "$ALLOWED" != "true" ]; then
+            gh api \
+              --method POST \
+              "/repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments" \
+              -f body="⛔ \`/ci\` 仅 \`@GXMZU-AITECC/reviewers\` 成员可触发。@${ACTOR} 不在审核人名单内，已跳过。"
+            echo "非审核人，拒绝执行"
+          else
+            echo "审核人 $ACTOR 已授权"
+          fi
+
+      - name: 读取 PR head
+        id: meta
+        if: steps.cmd.outputs.skip != 'true' && steps.check.outputs.allowed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          META=$(gh api "/repos/${{ github.repository }}/pulls/${{ github.event.issue.number }}")
+          echo "head_repo=$(printf '%s' "$META" | jq -r .head.repo.full_name)" >> "$GITHUB_OUTPUT"
+          echo "head_sha=$(printf '%s' "$META" | jq -r .head.sha)" >> "$GITHUB_OUTPUT"
+          gh api \
+            --method POST \
+            "/repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments" \
+            -f body="▶️ 审核人 @${{ github.event.comment.user.login }} 触发了 \`/ci\`，开始跑 **语法/静态前端 + 浏览器功能冒烟**。跑完后 bot 会回写案例清单、结果与未覆盖项（Issue #55）。"
+
+  smoke:
+    needs: authorize
+    if: needs.authorize.outputs.allowed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ needs.authorize.outputs.head_repo }}
+          ref: ${{ needs.authorize.outputs.head_sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: ci/package-lock.json
+
+      - name: Install CI deps
+        working-directory: ci
+        run: |
+          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+          npx playwright install --with-deps chromium
+
+      - name: 语法与静态前端
+        id: static
+        continue-on-error: true
+        working-directory: ci
+        run: npm run static
+
+      - name: Playwright 前端/功能冒烟
+        id: playwright
+        continue-on-error: true
+        working-directory: ci
+        run: npm test
+
+      - name: 生成并回写案例报告
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STATIC_STATUS: ${{ steps.static.outcome }}
+          PLAYWRIGHT_STATUS: ${{ steps.playwright.outcome }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          set +e
+          node ci/report.mjs > comment.md
+          REPORT_EXIT=$?
+          set -e
+          gh api \
+            --method POST \
+            "/repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments" \
+            -F body=@comment.md
+          if [ "${{ steps.static.outcome }}" != "success" ] || [ "${{ steps.playwright.outcome }}" != "success" ] || [ "$REPORT_EXIT" != "0" ]; then
+            echo "CI 未全部通过"
+            exit 1
+          fi
