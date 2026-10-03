@@ -28,6 +28,7 @@ let text = INITIAL;
 let acc = null;
 let pendingOp = null;
 let waiting = false;
+let memory = 0;
 
 // 连算（连按 = 重复上次运算）：记住上一次求值的运算符与右操作数
 let lastOp = null;
@@ -289,6 +290,46 @@ function inputCopy() {
     .then(() => showSub('已复制'))
     .catch(() => showSub('复制失败'));
 }
+/** 内存加：把当前显示的数加到内存里。 */
+function inputMemoryAdd() {
+  if (isError()) {
+    return;
+  }
+  const value = Number(text);
+  if (!Number.isFinite(value)) {
+    return;
+  }
+  memory = memory + value;
+  waiting = true;
+}
+
+/** 内存减：把当前显示的数从内存里减掉。 */
+function inputMemorySubtract() {
+  if (isError()) {
+    return;
+  }
+  const value = Number(text);
+  if (!Number.isFinite(value)) {
+    return;
+  }
+  memory = memory - value;
+  waiting = true;
+}
+
+/** 内存读：把内存里的数取出来显示到主屏。 */
+function inputMemoryRecall() {
+  if (isError()) {
+    return;
+  }
+  text = formatResult(memory);
+  waiting = true;
+  show();
+}
+
+/** 内存清：把内存归零。 */
+function inputMemoryClear() {
+  memory = 0;
+}
 
 // ---------------------------------------------------------------
 // 键盘渲染
@@ -303,6 +344,7 @@ const LAYOUT = [
   ['1/x', 'reciprocal'],
   ['(', 'lparen'], [')', 'rparen'], // #43 新增：末行整行放左右括号
   ['复制', 'copy'],
+  ['MC', 'mc'], ['MR', 'mr'], ['M+', 'mplus'], ['M−', 'mminus'],
 ];
 
 const KEY_CLASS = {
@@ -319,6 +361,10 @@ const KEY_CLASS = {
   lparen: 'key--action', // #43 新增
   rparen: 'key--action',
   copy: 'key--action',
+  mc: 'key--action',
+  mr: 'key--action',
+  mplus: 'key--action',
+  mminus: 'key--action',
 };
 
 LAYOUT.forEach(([label, kind]) => {
@@ -347,6 +393,14 @@ LAYOUT.forEach(([label, kind]) => {
       inputReciprocal();
     } else if (kind === 'copy') {
       inputCopy();
+    } else if (kind === 'mc') {
+      inputMemoryClear();
+    } else if (kind === 'mr') {
+      inputMemoryRecall();
+    } else if (kind === 'mplus') {
+      inputMemoryAdd();
+    } else if (kind === 'mminus') {
+      inputMemorySubtract();
     } else {
       inputEquals();
     }
@@ -376,7 +430,10 @@ document.addEventListener('keydown', (e) => {
     inputBackspace();
   } else if (e.key === 'Escape' || e.key.toLowerCase() === 'c') {
     inputClear();
+  } else {
+    return;
   }
+  e.preventDefault();
 });
 
 // =========================================
