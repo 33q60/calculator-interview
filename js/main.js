@@ -29,6 +29,11 @@ let acc = null;
 let pendingOp = null;
 let waiting = false;
 
+// 连算（连按 = 重复上次运算）：记住上一次求值的运算符与右操作数
+let lastOp = null;
+let lastRight = null;
+let canRepeat = false;
+
 function show() {
   displayMain.textContent = text;
 }
@@ -91,6 +96,7 @@ function inputDigit(digit) {
   if (isError()) {
     text = INITIAL;
   }
+  canRepeat = false; // 开始新一轮数字输入，连算资格作废
   if (waiting) {
     text = digit;
     waiting = false;
@@ -104,6 +110,7 @@ function inputDecimal() {
   if (isError()) {
     text = INITIAL;
   }
+  canRepeat = false; // 开始新一轮数字输入，连算资格作废
   if (waiting) {
     text = `${INITIAL}.`;
     waiting = false;
@@ -117,6 +124,7 @@ function inputOperator(op) {
   if (isError()) {
     return;
   }
+  canRepeat = false; // 选定新的运算符，旧的连算作废
 
   if (pendingOp !== null) {
     if (waiting) {
@@ -139,15 +147,32 @@ function inputOperator(op) {
 }
 
 function inputEquals() {
-  if (isError() || pendingOp === null) {
+  if (isError()) {
     return;
+  }
+
+  if (pendingOp === null) {
+    // 连算：没有新的待算运算时，若上次求值可重复，
+    // 就复用那次的运算符和右操作数，对当前结果再算一次
+    if (!canRepeat) {
+      return;
+    }
+    acc = Number(text);
+    pendingOp = lastOp;
+    text = formatResult(lastRight);
   }
 
   const line = `${formatResult(acc)} ${pendingOp} ${text} =`;
 
   if (!applyPending()) {
+    canRepeat = false; // 求值失败（如除零）进入错误态，连算资格作废
     return;
   }
+
+  // 记住本次的运算符和右操作数，供下一次按 = 连算
+  lastOp = pendingOp;
+  lastRight = Number(text);
+  canRepeat = true;
 
   text = formatResult(acc);
 
@@ -172,6 +197,7 @@ function inputBackspace() {
 function inputClearEntry() {
   text = INITIAL;
   waiting = false;
+  canRepeat = false; // CE 开始新的输入，连算资格作废
 
   if (pendingOp === null) {
     acc = null;
@@ -187,6 +213,7 @@ function inputSqrt() {
   if (isError()) {
     return;
   }
+  canRepeat = false; // 一元运算改变了当前数，连算资格作废
 
   const value = Number(text);
   if (value < 0) {
@@ -206,6 +233,7 @@ function inputSquare() {
   if (isError()) {
     return;
   }
+  canRepeat = false; // 一元运算改变了当前数，连算资格作废
 
   const value = Number(text);
   const result = formatResult(value * value);
@@ -227,6 +255,7 @@ function inputReciprocal() {
   if (isError()) {
     return;
   }
+  canRepeat = false; // 一元运算改变了当前数，连算资格作废
 
   const value = Number(text);
   text = formatResult(1 / value);
@@ -243,6 +272,9 @@ function inputReciprocal() {
 function inputClear() {
   text = INITIAL;
   clearState();
+  lastOp = null; // 连算记忆一并清除
+  lastRight = null;
+  canRepeat = false;
   showSub('');
   show();
 }
@@ -395,6 +427,7 @@ function recordHistory(line, result) {
 function refillFromHistory(item) {
   text = item.result;
   clearState();
+  canRepeat = false; // 回填的是另一条历史的结果，与之前那次连算无关
   waiting = true; // 与求值后一致：接着按数字另起一轮，按运算符则用这个结果继续算
   showSub('');
   show();
