@@ -26,11 +26,7 @@ jobs:
           
           echo "正在发送组织邀请..."
           gh api -X POST /orgs/GXMZU-AITECC/invitations \
-            -f invitee_id="$USER_ID" \
+            -F invitee_id="$USER_ID" \
             -f role="direct_member"
-          
-          echo "正在将用户加入 rookies 团队..."
-          gh api -X PUT /orgs/GXMZU-AITECC/teams/rookies/memberships/$USERNAME \
-            -f role="member"
           
           echo "邀请已发送！"
