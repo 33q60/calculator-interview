@@ -210,6 +210,17 @@ function inputClear() {
   show();
 }
 
+function inputCopy() {
+  if (!navigator.clipboard || typeof navigator.clipboard.writeText !== 'function') {
+    showSub('复制失败');
+    return;
+  }
+
+  navigator.clipboard.writeText(text)
+    .then(() => showSub('已复制'))
+    .catch(() => showSub('复制失败'));
+}
+
 // ---------------------------------------------------------------
 // 键盘渲染
 // ---------------------------------------------------------------
@@ -219,6 +230,7 @@ const LAYOUT = [
   ['1', 'digit'], ['2', 'digit'], ['3', 'digit'], ['×', 'operator'],
   ['0', 'digit'], ['−', 'operator'], ['+', 'operator'], ['=', 'equals'],
   ['.', 'decimal'], ['⌫', 'backspace'], ['CE', 'clearEntry'], ['√', 'sqrt'],
+  ['复制', 'copy'],
 ];
 
 const KEY_CLASS = {
@@ -230,6 +242,7 @@ const KEY_CLASS = {
   backspace: 'key--action',
   clearEntry: 'key--danger',
   sqrt: 'key--action',
+  copy: 'key--action',
 };
 
 LAYOUT.forEach(([label, kind]) => {
@@ -252,6 +265,8 @@ LAYOUT.forEach(([label, kind]) => {
       inputClearEntry();
     } else if (kind === 'sqrt') {
       inputSqrt();
+    } else if (kind === 'copy') {
+      inputCopy();
     } else {
       inputEquals();
     }
