@@ -187,7 +187,17 @@ function inputEquals() {
 }
 
 function inputBackspace() {
-  if (waiting || isError()) {
+  if (isError()) {
+    return;
+  }
+  // π 整体删除：当前显示的就是 π 的值时，一次退格全删
+  if (text === PI_TEXT) {
+    text = INITIAL;
+    waiting = false;
+    show();
+    return;
+  }
+  if (waiting) {
     return;
   }
 
@@ -296,6 +306,18 @@ function inputReciprocal() {
   show();
 }
 
+/** π 键：输入圆周率的近似值（用浮点近似，不做高精度符号显示）。 */
+const PI_TEXT = formatResult(Math.PI);
+
+function inputPi() {
+  if (isError()) {
+    text = INITIAL;
+  }
+  text = PI_TEXT;
+  waiting = true;
+  show();
+}
+
 /** C 键：全部清零。 */
 function inputClear() {
   text = INITIAL;
@@ -369,6 +391,7 @@ const LAYOUT = [
   ['.', 'decimal'], ['⌫', 'backspace'], ['CE', 'clearEntry'], ['√', 'sqrt'],
   ['x²', 'square'],
   ['1/x', 'reciprocal'],
+  ['π', 'pi'],
   ['(', 'lparen'], [')', 'rparen'], // #43 新增：末行整行放左右括号
   ['复制', 'copy'],
   ['MC', 'mc'], ['MR', 'mr'], ['M+', 'mplus'], ['M−', 'mminus'],
@@ -387,6 +410,7 @@ const KEY_CLASS = {
   square: 'key--action',
   percent: 'key--action',
   reciprocal: 'key--action',
+  pi: 'key--action',
   lparen: 'key--action', // #43 新增
   rparen: 'key--action',
   copy: 'key--action',
@@ -422,6 +446,8 @@ LAYOUT.forEach(([label, kind]) => {
       inputReciprocal();
     } else if (kind === 'percent') {
       inputPercent();
+    } else if (kind === 'pi') {
+      inputPi();
     } else if (kind === 'copy') {
       inputCopy();
     } else if (kind === 'mc') {
