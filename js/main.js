@@ -401,6 +401,8 @@ LAYOUT.forEach(([label, kind]) => {
       inputMemoryAdd();
     } else if (kind === 'mminus') {
       inputMemorySubtract();
+    } else if (kind === 'lparen' || kind === 'rparen') {
+      // 括号键占位：尚无表达式解析，忽略点击，避免误触发 =
     } else {
       inputEquals();
     }
