@@ -20,6 +20,18 @@ const runUrl = process.env.RUN_URL || '';
 const icon = (ok) => (ok === true ? '✅' : ok === false ? '❌' : '➖');
 const statusOk = (s) => (s === 'success' ? true : s === 'failure' ? false : null);
 
+/** 去掉 Playwright 等终端颜色码，避免 PR 评论备注栏乱码 */
+function stripAnsi(text) {
+  return String(text ?? '')
+    .replace(/\u001B\[[\d;]*[A-Za-z]/g, '')
+    .replace(/\u009B[\d;]*[A-Za-z]/g, '')
+    .replace(/\uFFFD\[([\d;]*)[A-Za-z]/g, '')
+    // ESC 丢失后残留的 [31m / [2m / [22m 等
+    .replace(/\[\d{1,3}(?:;\d{1,3})*m/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 /** 仍故意不锁、靠人工看的点 */
 const NOT_COVERED = [
   '像素级视觉回归 / 响应式布局截图对比（只锁 CSS 生效与关键选择器存在）',
@@ -53,7 +65,7 @@ function loadCases() {
         detail = 'skipped';
       } else {
         ok = false;
-        detail = last.error?.message?.split('\n')[0] || last.status;
+        detail = stripAnsi(last.error?.message?.split('\n')[0] || last.status);
       }
       cases.push({ title, ok, detail });
     }
@@ -108,7 +120,9 @@ if (error) {
   lines.push('| # | 案例 | 结果 | 备注 |');
   lines.push('| --- | --- | --- | --- |');
   cases.forEach((c, i) => {
-    const note = c.detail ? c.detail.replace(/\|/g, '\\|').slice(0, 120) : '';
+    const note = c.detail
+      ? stripAnsi(c.detail).replace(/\|/g, '\\|').replace(/\r?\n/g, ' ').slice(0, 120)
+      : '';
     lines.push(`| ${i + 1} | ${c.title} | ${icon(c.ok)} | ${note} |`);
   });
   const passed = cases.filter((c) => c.ok === true).length;
