@@ -1,0 +1,27 @@
+name: "拦截 Workflows 修改"
+
+on:
+  # 使用普通的 pull_request，不需要读取机密，Fork PR 也能正常运行
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  block-workflow-changes:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检查是否修改了 Workflows 文件
+        env:
+          # 使用系统自带的 GITHUB_TOKEN
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # 1. 获取这个 PR 修改的所有文件列表
+          CHANGED_FILES=$(gh pr view ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --json files --jq '.files[].path')
+          
+          # 2. 检查列表里有没有 .github/workflows/ 开头的文件
+          if echo "$CHANGED_FILES" | grep -q "^.github/workflows/"; then
+            echo "❌ 危险拦截：检测到本 PR 修改了 .github/workflows/ 目录下的文件！"
+            echo "为了组织安全，禁止在 PR 中修改 CI 流水线配置。请撤回该修改。"
+            exit 1  # 这一句会让 CI 直接变红失败
+          fi
+          
+          echo "✅ 安全检查通过：没有修改 .github/workflows/ 目录。"
