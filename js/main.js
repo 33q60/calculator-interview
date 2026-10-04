@@ -205,6 +205,7 @@ function inputEquals() {
   recordHistory(line, text);
 
   clearState();
+  parenStack.length = 0; // 未闭合的括号随本次求值一并作废
   waiting = true;
   showSub(line);
   show();
@@ -400,10 +401,69 @@ function inputTrig(name) {
   show();
 }
 
+// ---------------------------------------------------------------
+// 括号：用栈暂存外层上下文，按下 ) 时把括号内的算式求值
+// ---------------------------------------------------------------
+
+// 每层存 { acc, pendingOp }，即按下 ( 那一刻的外层运算上下文
+const parenStack = [];
+
+/** 左括号键：开一个子表达式，把外层上下文压栈，当前算式从零开始。 */
+function inputLParen() {
+  if (isError()) {
+    return;
+  }
+  // 只有在「正等着一个操作数」的位置才允许开括号：刚按下运算符、刚求值完（waiting），
+  // 或空白起点（C 之后）。其余位置一律忽略——刚打完一个数字再按 (（如 1 + 2 后的那个 (）
+  // 或刚闭合一个括号，都还没有运算符衔接，开了就会出现 5( 这种缺运算符的式子
+  const expectingOperand = waiting || (pendingOp === null && text === INITIAL);
+  if (!expectingOperand) {
+    return;
+  }
+
+  parenStack.push({ acc, pendingOp });
+  acc = null;
+  pendingOp = null;
+  text = INITIAL;
+  waiting = false;
+  canRepeat = false; // 换到子表达式，连算资格作废
+  show();
+}
+
+/** 右括号键：先把括号内的算式算完，再把结果并回外层上下文。 */
+function inputRParen() {
+  if (isError() || parenStack.length === 0) {
+    return; // 没有未闭合的 ( ，忽略点击
+  }
+
+  // 括号内还有没算完的运算（如 2 + 3），先算掉
+  if (pendingOp !== null && !waiting) {
+    if (!applyPending()) {
+      parenStack.length = 0; // 求值出错（如除零），整串括号一并作废
+      return;
+    }
+    text = formatResult(acc);
+  }
+
+  const value = text;
+  const outer = parenStack.pop();
+
+  // 括号结果并回外层：外层有运算符就等按 = 时合并，没有它就是整个式子
+  acc = outer.acc;
+  pendingOp = outer.pendingOp;
+  text = value;
+  // 外层没有运算符 → 这个括号就是整个式子，结果等同于按完 = ，下一个数字另起一轮；
+  // 外层还有运算符 → 括号结果是一个待合并的操作数，与刚打完一个数同构
+  waiting = outer.pendingOp === null;
+  canRepeat = false;
+  show();
+}
+
 /** C 键：全部清零。 */
 function inputClear() {
   text = INITIAL;
   clearState();
+  parenStack.length = 0; // 未闭合的括号一并清零
   lastOp = null; // 连算记忆一并清除
   lastRight = null;
   canRepeat = false;
@@ -549,8 +609,10 @@ LAYOUT.forEach(([label, kind]) => {
     } else if (kind === 'angleMode') {
       toggleAngleMode();
       button.textContent = useDegrees ? 'DEG' : 'RAD';
-    } else if (kind === 'lparen' || kind === 'rparen') {
-      // 括号键占位：尚无表达式解析，忽略点击，避免误触发 =
+    } else if (kind === 'lparen') {
+      inputLParen();
+    } else if (kind === 'rparen') {
+      inputRParen();
     } else {
       inputEquals();
     }
