@@ -16,6 +16,7 @@ const historyPanel = document.getElementById('history-panel');
  */
 function add(a, b) {
   // TODO: 整个计算器现在只会这一件事，而且还没实现——等着你的 PR
+  return a + b;
 }
 /**
  * 常用对数 log10
@@ -39,8 +40,7 @@ function pow10(x) {
   const res = Math.pow(10, x);
   return Number(res.toPrecision(10));
 }
-  return a + b;
-}
+
 
 // ---------------------------------------------------------------
 // 计算状态
