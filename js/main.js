@@ -342,6 +342,64 @@ function inputPi() {
   show();
 }
 
+// ---------------------------------------------------------------
+// 三角函数与角度模式（DEG/RAD）
+// ---------------------------------------------------------------
+let useDegrees = true; // 默认角度制 DEG
+
+/** DEG/RAD 切换键：翻转角度模式；无 pending 运算时在副屏提示当前模式。 */
+function toggleAngleMode() {
+  useDegrees = !useDegrees;
+  if (pendingOp === null) {
+    showSub(useDegrees ? '角度制 DEG' : '弧度制 RAD');
+  }
+}
+
+/**
+ * 三角函数键：对当前显示值求 sin/cos/tan，行为与 √ 等一元运算键一致。
+ * @param {string} name 函数名：'sin' | 'cos' | 'tan'
+ */
+function inputTrig(name) {
+  if (isError()) {
+    return;
+  }
+  canRepeat = false; // 一元运算改变了当前数，连算资格作废
+
+  const value = Number(text);
+  if (!Number.isFinite(value)) {
+    return;
+  }
+
+  // DEG 模式先把角度换算成弧度；RAD 模式直接用输入值
+  const angle = useDegrees ? (value * Math.PI) / 180 : value;
+
+  // tan 在 90°（π/2）等无定义处：余弦接近 0，按「错误」处理，不显示 Infinity。
+  // 阈值取 1e-10：显示值只有 12 位有效数字，离 π/2 这么近的输入就视为 π/2
+  if (name === 'tan' && Math.abs(Math.cos(angle)) < 1e-10) {
+    text = ERROR_TEXT;
+    clearState();
+    showSub('');
+    show();
+    return;
+  }
+
+  let result = Math[name](angle);
+
+  // 浮点残差清理：结果绝对值过小时归零（如 sin 180° ≈ 1.2e-16 应显示 0）
+  if (Math.abs(result) < 1e-12) {
+    result = 0;
+  }
+
+  text = formatResult(result);
+
+  if (text === ERROR_TEXT) {
+    clearState();
+    showSub('');
+  }
+
+  show();
+}
+
 /** C 键：全部清零。 */
 function inputClear() {
   text = INITIAL;
@@ -420,6 +478,8 @@ const LAYOUT = [
   ['复制', 'copy'],
   ['MC', 'mc'], ['MR', 'mr'], ['M+', 'mplus'], ['M−', 'mminus'],
   ['%', 'percent'], // #33 新增：百分号键
+  ['sin', 'trig'], ['cos', 'trig'], ['tan', 'trig'], // 三角函数键
+  ['DEG', 'angleMode'], // 角度/弧度切换键：键面文字随当前模式变化
 ];
 
 const KEY_CLASS = {
@@ -442,6 +502,8 @@ const KEY_CLASS = {
   mr: 'key--action',
   mplus: 'key--action',
   mminus: 'key--action',
+  trig: 'key--action', // 三角函数键
+  angleMode: 'key--action', // 角度/弧度切换键
 };
 
 LAYOUT.forEach(([label, kind]) => {
@@ -482,6 +544,11 @@ LAYOUT.forEach(([label, kind]) => {
       inputMemoryAdd();
     } else if (kind === 'mminus') {
       inputMemorySubtract();
+    } else if (kind === 'trig') {
+      inputTrig(label);
+    } else if (kind === 'angleMode') {
+      toggleAngleMode();
+      button.textContent = useDegrees ? 'DEG' : 'RAD';
     } else if (kind === 'lparen' || kind === 'rparen') {
       // 括号键占位：尚无表达式解析，忽略点击，避免误触发 =
     } else {
