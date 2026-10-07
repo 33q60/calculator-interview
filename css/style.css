@@ -8,17 +8,18 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg: #1a1d24;            /* 页面背景 */
-  --panel: #222733;         /* 计算器面板 */
-  --display-bg: #2b303e;    /* 显示区背景 */
-  --display-text: #f5f6fa;  /* 主屏文字 */
-  --text-sub: #8a90a0;      /* 副屏/次要文字 */
+  --bg: #c6d5f8;            /* 页面背景 */
+  --panel: #203052;         /* 计算器面板 */
+  --display-bg: #cacded;    /* 显示区背景 */
+  --display-text: #020202;  /* 主屏文字 */
+  --text-sub: #898b91;      /* 副屏/次要文字 */
 
   /* 按键配色（对应 Python 版 view.py 的 colors 表） */
-  --key-normal: #576574;    /* 数字键 */
-  --key-action: #54a0ff;    /* 运算符键 */
-  --key-danger: #ff6b6b;    /* CLEAR 键 */
-  --key-success: #1dd1a1;   /* 等号键 */
+  --key-normal: #e7e7e7;    /* 数字键 */
+  --key-action: #fd8821;    /* 运算符键 */
+  --key-danger: #fa6666;    /* CLEAR 键 */
+  --key-success: #26e9b5;   /* 等号键 */
+  --key-backspace: #d4aded;  /* 新增退格键颜色*/
 }
 
 body {
@@ -35,30 +36,44 @@ body {
   width: 340px;
   padding: 20px;
   background: var(--panel);
-  border-radius: 16px;
+  /* 连续曲率圆角（squircle）：Chrome 139+ 生效，其余浏览器退化为普通圆角（#120） */
+  border-radius: 30px;
+  corner-shape: squircle;
   box-shadow: 0 10px 30px rgba(0, 0, 0, .35);
 }
 
 /* ---------- 显示区（种子已就绪） ---------- */
 .display__main {
-  height: 60px;
+  height: 90px;
   padding: 0 12px;
-  font-size: 32px;
+  font-size: 48px;
   font-weight: bold;
-  line-height: 60px;
+  line-height: 90px;
   color: var(--display-text);
   background: var(--display-bg);
   border: 2px solid #3a4152;
-  border-radius: 10px;
+  /* 与面板同一套曲率语言，层级递减（#120） */
+  border-radius: 16px;
+  corner-shape: squircle;
   text-align: right;
   overflow-x: auto;      /* 内容过长时横向滚动 */
   white-space: nowrap;
+  /* 只隐藏滚动条外观，滚动能力保留（#123） */
+  scrollbar-width: none;          /* Firefox */
+  -ms-overflow-style: none;       /* 旧 Edge / IE */
+}
+
+/* Chromium / Safari：把滚动条画成 0 尺寸（#123） */
+.display__main::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 
 .display__sub {
   min-height: 18px;
   padding: 4px 6px 0;
-  font-size: 12px;
+  font-size: 20px;
   color: var(--text-sub);
   text-align: right;
 }
@@ -75,20 +90,31 @@ body {
 .key {
   height: 52px;
   border: none;
-  border-radius: 8px;
-  font-size: 18px;
+  /* 与面板同一套曲率语言，层级递减（#120） */
+  border-radius: 18px;
+  corner-shape: squircle;
+  font-size: 24px;
   font-weight: bold;
-  color: #fff;
+  color: #323232;
   cursor: pointer;
-  transition: filter .15s;
+  -webkit-tap-highlight-color: transparent;
+  /* 按下反馈用 transform 实现：纯视觉，不参与布局、不会挤动其它键（#121） */
+  transition: transform .12s ease, filter .15s;
 }
 .key:hover  { filter: brightness(1.15); }
-.key:active { filter: brightness(.9); }
+.key:active { transform: scale(.94); filter: brightness(.9); }
+
+/* 尊重系统的「减少动态效果」偏好：不做缩放，只保留亮度反馈 */
+@media (prefers-reduced-motion: reduce) {
+  .key { transition: none; }
+  .key:active { transform: none; }
+}
 
 .key--normal  { background: var(--key-normal); }   /* 数字键 */
 .key--action  { background: var(--key-action); }   /* 运算符键 */
 .key--danger  { background: var(--key-danger); }   /* CLEAR 键 */
 .key--success { background: var(--key-success); }  /* 等号键 */
+.key--backspace { background: var(--key-backspace); }  /* 新增退格键样式类 */
 
 .key--wide { grid-column: span 2; }  /* 占两列（如 0 键，对应 Python 版 colspan=2） */
 /* =========================================

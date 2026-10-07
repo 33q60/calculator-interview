@@ -5,7 +5,7 @@ const keyboard = document.getElementById('keyboard');
 // 获取历史记录列表容器
 const historyList = document.getElementById('history-list');
 
-// 获取历史记录面板（只用来挂「清空」按钮，DOM 结构不改）
+// 获取历史记录面板(只用来挂「清空」按钮,DOM 结构不改）
 const historyPanel = document.getElementById('history-panel');
 
 /**
@@ -21,7 +21,7 @@ function add(a, b) {
 /**
  * 常用对数 log10
  * @param {number} x 输入数字
- * @returns {number|string} 以10为底的对数，x≤0返回非法输入
+ * @returns {number|string} 以10为底的对数,x≤0返回非法输入
  */
 function log10(x) {
   if(x <= 0){
@@ -59,8 +59,30 @@ let lastOp = null;
 let lastRight = null;
 let canRepeat = false;
 
+// ---------------------------------------------------------------
+// 主显示区字号自适应：位数多到装不下就逐像素缩小，缩到下限为止（#124)
+// ---------------------------------------------------------------
+// 基准字号直接读样式表，避免和 css/style.css 的 32px 各写一份
+const DISPLAY_FONT_BASE = parseFloat(getComputedStyle(displayMain).fontSize) || 32;
+const DISPLAY_FONT_MIN = 14; // 最小字号：再长也不小于它，超出部分交给横向滚动
+
+/** 先回到基准字号；装不下就逐像素缩小，直到不再溢出或触到最小字号。 */
+function fitDisplayFont() {
+  displayMain.style.fontSize = '';
+  if (displayMain.scrollWidth <= displayMain.clientWidth) {
+    return; // 装得下，保持样式表里的基准字号
+  }
+  for (let size = DISPLAY_FONT_BASE - 1; size >= DISPLAY_FONT_MIN; size -= 1) {
+    displayMain.style.fontSize = `${size}px`;
+    if (displayMain.scrollWidth <= displayMain.clientWidth) {
+      return;
+    }
+  }
+}
+
 function show() {
   displayMain.textContent = text;
+  fitDisplayFont();
 }
 
 function showSub(line) {
@@ -85,7 +107,10 @@ const OPERATORS = {
   '−': (a, b) => a - b,
   '×': (a, b) => a * b,
   '÷': (a, b) => a / b,
-};
+ 'xʸ': (a, b) => Math.pow(a, b), // 新增：任意次幂 xʸ
+ 'ʸ√x': (a, b) => (a < 0 && b % 2 === 1) ? -Math.pow(-a, 1 / b) : Math.pow(a, 1 / b), // ← 新增：n 次方根，b 是根指数
+};  
+
 
 function formatResult(n) {
   if (!Number.isFinite(n)) {
@@ -118,6 +143,13 @@ function applyPending() {
 // 按键行为
 // ---------------------------------------------------------------
 function inputDigit(digit) {
+  // 00 双零键：等价于连按两次 0。复用本函数的语义,
+  // 天然不会产生 "00" 这种前导零，也不会破坏小数。
+  if (digit === '00') {
+    inputDigit('0');
+    inputDigit('0');
+    return;
+  }
   if (isError()) {
     text = INITIAL;
   }
@@ -272,7 +304,7 @@ function inputPercent() {
   canRepeat = false; // 一元运算改变了当前数，连算资格作废
 
   const value = Number(text);
-  const isPercentOfLeft = pendingOp === '+' || pendingOp === '−';
+  const isPercentOfLeft = pendingOp === '+' || pendingOp === '-';
   let result;
 
   if (acc !== null && isPercentOfLeft) {
@@ -344,7 +376,7 @@ function inputPi() {
 }
 
 // ---------------------------------------------------------------
-// 三角函数与角度模式（DEG/RAD）
+// 三角函数与角度模式(DEG/RAD)
 // ---------------------------------------------------------------
 let useDegrees = true; // 默认角度制 DEG
 
@@ -357,7 +389,7 @@ function toggleAngleMode() {
 }
 
 /**
- * 三角函数键：对当前显示值求 sin/cos/tan，行为与 √ 等一元运算键一致。
+ * 三角函数键：对当前显示值求 sin/cos/tan,行为与 √ 等一元运算键一致。
  * @param {string} name 函数名：'sin' | 'cos' | 'tan'
  */
 function inputTrig(name) {
@@ -371,11 +403,11 @@ function inputTrig(name) {
     return;
   }
 
-  // DEG 模式先把角度换算成弧度；RAD 模式直接用输入值
+  // DEG 模式先把角度换算成弧度;RAD 模式直接用输入值
   const angle = useDegrees ? (value * Math.PI) / 180 : value;
 
-  // tan 在 90°（π/2）等无定义处：余弦接近 0，按「错误」处理，不显示 Infinity。
-  // 阈值取 1e-10：显示值只有 12 位有效数字，离 π/2 这么近的输入就视为 π/2
+  // tan 在 90°(π/2)等无定义处：余弦接近 0,按「错误」处理，不显示 Infinity。
+  // 阈值取 1e-10:显示值只有 12 位有效数字，离 π/2 这么近的输入就视为 π/2
   if (name === 'tan' && Math.abs(Math.cos(angle)) < 1e-10) {
     text = ERROR_TEXT;
     clearState();
@@ -386,7 +418,7 @@ function inputTrig(name) {
 
   let result = Math[name](angle);
 
-  // 浮点残差清理：结果绝对值过小时归零（如 sin 180° ≈ 1.2e-16 应显示 0）
+  // 浮点残差清理：结果绝对值过小时归零（如 sin 180° ≈ 1.2e-16 应显示 0)
   if (Math.abs(result) < 1e-12) {
     result = 0;
   }
@@ -413,8 +445,8 @@ function inputLParen() {
   if (isError()) {
     return;
   }
-  // 只有在「正等着一个操作数」的位置才允许开括号：刚按下运算符、刚求值完（waiting），
-  // 或空白起点（C 之后）。其余位置一律忽略——刚打完一个数字再按 (（如 1 + 2 后的那个 (）
+  // 只有在「正等着一个操作数」的位置才允许开括号:刚按下运算符、刚求值完(waiting),
+  // 或空白起点(C 之后）。其余位置一律忽略——刚打完一个数字再按 (（如 1 + 2 后的那个 ()
   // 或刚闭合一个括号，都还没有运算符衔接，开了就会出现 5( 这种缺运算符的式子
   const expectingOperand = waiting || (pendingOp === null && text === INITIAL);
   if (!expectingOperand) {
@@ -436,7 +468,7 @@ function inputRParen() {
     return; // 没有未闭合的 ( ，忽略点击
   }
 
-  // 括号内还有没算完的运算（如 2 + 3），先算掉
+  // 括号内还有没算完的运算（如 2 + 3)，先算掉
   if (pendingOp !== null && !waiting) {
     if (!applyPending()) {
       parenStack.length = 0; // 求值出错（如除零），整串括号一并作废
@@ -456,6 +488,26 @@ function inputRParen() {
   // 外层还有运算符 → 括号结果是一个待合并的操作数，与刚打完一个数同构
   waiting = outer.pendingOp === null;
   canRepeat = false;
+  show();
+}
+
+/** ± 键:切换当前显示数字的正负;0(含 0.0保持不变。 */
+function inputPlusMinus() {
+  if (isError()) ;
+    return;
+  }
+  canRepeat = false; // 一元运算改变了当前数，连算资格作废
+
+  const value = Number(text);
+  if (value === 0) {
+    return; // 验收标准 2:0.0 点击 ± 依旧为 0.0
+  }
+
+  if (text.startsWith('-')) {
+    text = text.slice(1); // 负数变回正数
+  } else {
+    text = `-${text}`; // 正数变为负数
+  }
   show();
 }
 
@@ -492,6 +544,7 @@ function inputMemoryAdd() {
   }
   memory = memory + value;
   waiting = true;
+   updateMemoryIndicator();
 }
 
 /** 内存减：把当前显示的数从内存里减掉。 */
@@ -505,6 +558,7 @@ function inputMemorySubtract() {
   }
   memory = memory - value;
   waiting = true;
+   updateMemoryIndicator();
 }
 
 /** 内存读：把内存里的数取出来显示到主屏。 */
@@ -520,6 +574,7 @@ function inputMemoryRecall() {
 /** 内存清：把内存归零。 */
 function inputMemoryClear() {
   memory = 0;
+  updateMemoryIndicator();
 }
 
 // ---------------------------------------------------------------
@@ -528,18 +583,21 @@ function inputMemoryClear() {
 const LAYOUT = [
   ['7', 'digit'], ['8', 'digit'], ['9', 'digit'], ['C', 'clear'],
   ['4', 'digit'], ['5', 'digit'], ['6', 'digit'], ['÷', 'operator'],
-  ['1', 'digit'], ['2', 'digit'], ['3', 'digit'], ['×', 'operator'],
-  ['0', 'digit'], ['−', 'operator'], ['+', 'operator'], ['=', 'equals'],
-  ['.', 'decimal'], ['⌫', 'backspace'], ['CE', 'clearEntry'], ['√', 'sqrt'],
+  ['1', 'digit'], ['2', 'digit'], ['3', 'digit'], ['*', 'operator'],
+  ['0', 'digit'], ['-', 'operator'], ['+', 'operator'], ['=', 'equals'],
+  ['.', 'decimal'], ['00', 'digit'], ['⌫', 'backspace'], ['CE', 'clearEntry'], ['√', 'sqrt'],
   ['x²', 'square'],
   ['1/x', 'reciprocal'],
   ['π', 'pi'],
   ['(', 'lparen'], [')', 'rparen'], // #43 新增：末行整行放左右括号
   ['复制', 'copy'],
-  ['MC', 'mc'], ['MR', 'mr'], ['M+', 'mplus'], ['M−', 'mminus'],
+  ['MC', 'mc'], ['MR', 'mr'], ['M+', 'mplus'], ['M-', 'mminus'],
   ['%', 'percent'], // #33 新增：百分号键
   ['sin', 'trig'], ['cos', 'trig'], ['tan', 'trig'], // 三角函数键
   ['DEG', 'angleMode'], // 角度/弧度切换键：键面文字随当前模式变化
+  ['xʸ', 'operator'], // 新增：任意次幂键
+  ['±', 'plusMinus'], // #102 新增：正负切换键
+  ['ʸ√x', 'operator'], // ← 新增:n 次方根键
 ];
 
 const KEY_CLASS = {
@@ -548,11 +606,12 @@ const KEY_CLASS = {
   clear: 'key--danger',
   equals: 'key--success',
   decimal: 'key--normal',
-  backspace: 'key--action',
+  backspace: 'key--backspace',
   clearEntry: 'key--danger',
   sqrt: 'key--action',
   square: 'key--action',
   percent: 'key--action',
+  plusMinus: 'key--action',
   reciprocal: 'key--action',
   pi: 'key--action',
   lparen: 'key--action', // #43 新增
@@ -594,6 +653,8 @@ LAYOUT.forEach(([label, kind]) => {
       inputPercent();
     } else if (kind === 'pi') {
       inputPi();
+    } else if (kind === 'plusMinus') {
+      inputPlusMinus();
     } else if (kind === 'copy') {
       inputCopy();
     } else if (kind === 'mc') {
@@ -631,9 +692,9 @@ document.addEventListener('keydown', (e) => {
   } else if (e.key === '+') {
     inputOperator('+');
   } else if (e.key === '-') {
-    inputOperator('−');
+    inputOperator('-');
   } else if (e.key === '*') {
-    inputOperator('×');
+    inputOperator('*');
   } else if (e.key === '/') {
     inputOperator('÷');
   } else if (e.key === 'Enter' || e.key === '=') {
@@ -658,7 +719,7 @@ const HISTORY_MAX = 20; // 最多保留条数，超出丢弃最旧的
 // 每条 { line: '12 + 7 =', result: '19' }，新的排最前
 let history = [];
 
-/** 只认结构完整的记录：脏数据（null / 缺字段）直接丢掉，免得渲染出 undefined。 */
+/** 只认结构完整的记录:脏数据(null / 缺字段）直接丢掉，免得渲染出 undefined。 */
 function isHistoryItem(item) {
   return Boolean(item) && typeof item.line === 'string' && typeof item.result === 'string';
 }
@@ -673,7 +734,7 @@ function loadHistory() {
   }
 }
 
-/** 写回 localStorage；写不进去（无痕模式）就静默跳过，不影响计算。 */
+/** 写回 localStorage;写不进去（无痕模式）就静默跳过，不影响计算。 */
 function saveHistory() {
   try {
     localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
@@ -737,7 +798,7 @@ function renderHistory() {
   historyList.scrollTop = 0; // 最新的在最上面，回到顶部
 }
 
-// 「清空」按钮挂在标题右侧：标题与按钮包一层，index.html 不动
+// 「清空」按钮挂在标题右侧:标题与按钮包一层,index.html 不动
 if (historyPanel && historyList) {
   const title = historyPanel.querySelector('h3');
   const head = document.createElement('div');
@@ -759,3 +820,269 @@ if (historyPanel && historyList) {
 loadHistory();
 renderHistory();
 show();
+
+
+   /**
+  * 简易绘图：绘制二次函数抛物线 y = ax² + bx + c 的坐标点数组
+  * @param {number} a 二次项系数,不能为0
+  * @param {number} b 一次项系数
+  * @param {number} c 常数项
+  * @param {number} startX x起始值
+  * @param {number} endX x结束值
+  * @param {number} step 步长
+  * @returns {Array<string>} 坐标点集合
+  */
+ function drawParabola(a, b, c, startX = -10, endX = 10, step = 0.5) {
+   const points = [ ];
+   const points = [];
+   if (a === 0 || typeof a !== "number") {
+     return ["Invalid input: a cannot be 0"];
+   }
+   if (typeof b !=="number"||typeof c !=="number"){
+    return ["Invalid input: b and c must be numbers"];
+   }
+   for (let x = startX; x <= endX; x += step) {
+     const y = a * x * x + b * x + c;
+     points.push( ` (${x . toFixed(2)},${y . toFixed(2)}) ` );
+   }
+   return points;
+ }
+function renderParabola(points) {
+   const canvas = document.getElementById('canvas');
+   const ctx = canvas.getContext('2d');
+   const w = canvas.width;
+   const h = canvas.height;
+   ctx.clearRect(0, 0, w, h);
+   const scale = 18;
+   const cx = w / 2;
+   const cy = h / 2;
+   // 画坐标轴
+   ctx.strokeStyle=#888";
+   ctx.lineWidth=1;
+   ctx.beginPath();
+   ctx.moveTo(0, cy);
+   ctx.lineTo(w, cy);
+   ctx.stroke();
+   ctx.beginPath();
+   ctx.moveTo(cx,0);
+   ctx.lineTo(cx,h);
+   ctx.stroke();
+   // 画抛物线曲线
+   ctx.beginPath();
+   ctx.strokeStyle=#42b983";
+   ctx.lineWidth=2;
+   for(let i=0;i<points.length;i++){
+     const str = points[i].replace(/[()]/g,'').split(',');
+     const x = Number(str[0]);
+     const y = Number(str[1]);
+     const px = cx + x * scale;
+     const py = cy - y * scale;
+     if(i===0) ctx.moveTo(px,py);
+     else ctx.lineTo(px,py);
+   }
+   ctx.stroke();
+ }
+// 绘图按钮点击事件
+ document.addEventListener('DOMContentLoaded', function() {
+   const drawBtn = document.getElementById('drawBtn');
+if (!drawBtn) return;
+   if (drawBtn) {
+   drawBtn.addEventListener('click', () => {
+     const aStr = document.getElementById('inputA').value.trim();
+     const bStr = document.getElementById('inputB').value.trim();
+     const cStr = document.getElementById('inputC').value.trim();
+     const a = Number(aStr);
+     const b = Number(bStr);
+     const c = Number(cStr);
+     // 校验
+     if (aStr === "" || isNaN(a)) {
+       alert("a must be a valid number");
+       return;
+     }
+     if (a === 0) {
+       alert("Quadratic coeffcient a cannot be 0");
+       return;
+     }
+     if (bStr === "" || isNaN(b)) {
+       alert("b must be a valid number");
+       return;
+     }
+     if (cStr === "" || isNaN(c)) {
+       alert("c must be a valid number");
+       return;
+     }
+     // 调用你的原有函数，生成点数组，再渲染画布
+     const pointArr = drawParabola(a, b, c, -10, 10, 0.5);
+     // 判断drawParabola返回的是不是报错信息
+     if(pointArr[0].startsWith("Invalid input")){
+       alert(pointArr[0]);
+       return;
+     }
+     renderParabola(pointArr);
+ })
+}
+ })
+
+// =========================================
+// 新增：十进制 → 二进制 / 八进制 / 十六进制（关联提案 #145）
+// 只做十进制向 BIN/OCT/HEX 的单向转换，不反向转回十进制。
+// 输入为十进制整数；小数、负数、非数字一律按非法输入处理（副屏提示 + 主屏「错误」），
+// 全程不出现 NaN、页面不崩溃。
+// 本段为纯叠加新增，未改动上方任何既有代码、显示区 DOM 结构与既有函数签名。
+// =========================================
+
+/**
+ * 把十进制整数的显示文本转成指定进制的字符串。
+ * @param {string} input 当前主屏文本（十进制）
+ * @param {number} radix 目标进制：2 / 8 / 16
+ * @returns {{ ok: true, value: string } | { ok: false, reason: string }}
+ *   成功返回 ok:true，value 为转换结果（十六进制 A-F 统一大写）；
+ *   失败返回 ok:false，reason 为非法输入的中文原因。
+ */
+function convertFromDecimal(input, radix) {
+  const raw = String(input).trim();
+
+  // 空输入 / 纯符号：不是合法的十进制整数
+  if (raw === '' || raw === '-' || raw === '+') {
+    return { ok: false, reason: '非法输入' };
+  }
+
+  // 负数是非法输入：本题只支持非负十进制整数
+  if (raw.startsWith('-')) {
+    return { ok: false, reason: '不支持负数' };
+  }
+
+  // 小数是非法输入：转换只针对十进制整数
+  if (raw.includes('.')) {
+    return { ok: false, reason: '不支持小数' };
+  }
+
+  // 严格的十进制整数字面量校验：仅数字组成，避免 Number() 把 '1e3'、'0x10'、'Infinity' 当成合法数
+  if (!/^\d+$/.test(raw)) {
+    return { ok: false, reason: '非法输入' };
+  }
+
+  const value = Number(raw);
+  if (!Number.isSafeInteger(value)) {
+    return { ok: false, reason: '数值过大' };
+  }
+
+  let converted;
+  if (radix === 16) {
+    converted = value.toString(16).toUpperCase(); // 十六进制 A-F 大写
+  } else {
+    converted = value.toString(radix);
+  }
+
+  // 防御式兜底：任何意外都不允许把 NaN/undefined 显示出去
+  if (typeof converted !== 'string' || converted === '' || converted.includes('NaN')) {
+    return { ok: false, reason: '非法输入' };
+  }
+
+  return { ok: true, value: converted };
+}
+
+/**
+ * 转换键的统一入口：读取当前主屏值，按目标进制转换并把结果写回主屏。
+ * 兼容既有状态机：转换结果写回 text 并置 waiting，后续可直接参与四则运算。
+ * @param {number} radix 目标进制：2 / 8 / 16
+ * @param {string} label 副屏提示用的进制名：'BIN' | 'OCT' | 'HEX'
+ */
+function inputBaseConvert(radix, label) {
+  const from = isError() ? '' : text;
+  const result = convertFromDecimal(from, radix);
+
+  if (!result.ok) {
+    // 非法输入：主屏进「错误」态，副屏写明原因，页面不崩、不出现 NaN
+    text = ERROR_TEXT;
+    clearState();
+    canRepeat = false;
+    showSub(`十进制 → ${label}：${result.reason}`);
+    show();
+    return;
+  }
+
+  canRepeat = false; // 一元转换改变了当前数，连算资格作废
+  text = result.value;
+  showSub(`${from} (十进制) = ${result.value} (${label})`);
+  show();
+}
+
+/** 十进制 → 二进制键。 */
+function inputBinary() {
+  inputBaseConvert(2, 'BIN');
+}
+
+/** 十进制 → 八进制键。 */
+function inputOctal() {
+  inputBaseConvert(8, 'OCT');
+}
+
+/** 十进制 → 十六进制键。 */
+function inputHex() {
+  inputBaseConvert(16, 'HEX');
+}
+
+// #145 新增：在键盘网格末尾追加 BIN / OCT / HEX 三个转换键。
+// 不改动 LAYOUT / KEY_CLASS / 既有按键分发逻辑（develop 的 static-check
+// 白名单未收录新 kind，且本 PR 约束只改 js/main.js），按 README 增补条例
+// 「显示区之外要加按钮也可以」（CT1），沿用现有 .key .key--action 样式直接追加。
+const BASE_CONVERT_KEYS = [
+  ['BIN', inputBinary],
+  ['OCT', inputOctal],
+  ['HEX', inputHex],
+];
+
+BASE_CONVERT_KEYS.forEach(([label, handler]) => {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'key key--action';
+  button.textContent = label;
+  button.addEventListener('click', handler);
+  keyboard.appendChild(button);
+});
+
+
+// =========================================
+// 新增：内存状态指示器（内存有值时显示 M 标记）
+// 内存有非零值时在面板左上角显示「M」,为空时隐藏；悬停查看内存值。
+// 只新增代码：不动显示区 DOM、不改已有函数签名、不引依赖。
+// =========================================
+const memoryIndicator = document.createElement('span');
+memoryIndicator.className = 'memory-indicator';
+memoryIndicator.textContent = 'M';
+
+const memoryIndicatorStyle = document.createElement('style');
+memoryIndicatorStyle.textContent = [
+  'main.calculator { position: relative; }',
+  '.memory-indicator {',
+  '  display: none;',
+  '  position: absolute;',
+  '  top: 1px;',
+  '  left: 14px;',
+  '  width: 18px;',
+  '  height: 18px;',
+  '  line-height: 18px;',
+  '  border-radius: 5px;',
+  '  background: var(--key-action);',
+  '  color: #fff;',
+  '  font-size: 12px;',
+  '  font-weight: bold;',
+  '  text-align: center;',
+  '  cursor: default;',
+  '}',
+].join('\n');
+document.head.appendChild(memoryIndicatorStyle);
+
+function updateMemoryIndicator() {
+  const hasValue = memory !== 0;
+  memoryIndicator.style.display = hasValue ? 'block' : 'none';
+  memoryIndicator.title = hasValue ? `内存：${formatResult(memory)}` : '内存为空';
+}
+
+const memoryIndicatorHost = document.querySelector('main.calculator');
+if (memoryIndicatorHost) {
+  memoryIndicatorHost.appendChild(memoryIndicator);
+}
+
+updateMemoryIndicator();
